@@ -7,374 +7,330 @@ const GroceryHut = (() => {
   let products = [];
   const cart = new Map();
   let wishlist = JSON.parse(localStorage.getItem('grocery_wishlist')) || [];
+  let category = "All";
+  let search = "";
+  let sort = "default";
+  let selectedVillage = "";
   let currentModalProductId = null;
-  let categoryFilter = "All";
   
   const byId = id => document.getElementById(id);
   const money = amount => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount);
 
-  // 1. LOAD PRODUCTS FROM FIREBASE
   async function loadProducts() {
     try {
-      const qs = await getDocs(collection(db, "products"));
-      products = []; 
-      qs.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
-      renderProducts(); 
+      const querySnapshot = await getDocs(collection(db, "products"));
+      products = [];
+      querySnapshot.forEach((doc) => products.push({ id: doc.id, ...doc.data() }));
+      renderProducts();
+      renderEssentials();
       updateCartUI();
-    } catch (e) { 
-      toast("Failed to load products."); 
-      console.error(e);
+    } catch (error) {
+      console.error(error);
+      toast("Failed to load products.");
     }
   }
 
-  // 2. RENDER PRODUCTS
-  function renderProducts() {
-    const grid = byId("productGrid"); if (!grid) return;
-    const search = byId("searchInput")?.value.toLowerCase() || "";
-    
-    let filtered = products.filter(p => p.name.toLowerCase().includes(search));
-    if (categoryFilter !== "All") {
-      filtered = filtered.filter(p => p.category === categoryFilter);
+  async function loadMyOrders() {
+    const ordersList = byId("ordersList");
+    if (!ordersList) return;
+    if (!auth.currentUser) {
+      ordersList.innerHTML = `<div class="empty-state"><h3>Not Signed In</h3><p>Please log in to see your orders.</p></div>`;
+      return;
     }
+    ordersList.innerHTML = `<p style="text-align:center; padding: 20px;">Loading your orders...</p>`;
+    try {
+      const q = query(collection(db, "orders"), where("userId", "==", auth.currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        ordersList.innerHTML = `<div class="empty-state"><span style="font-size:40px;">📦</span><h3>No orders yet</h3></div>`;
+        return;
+      }
+      let allOrders = [];
+      querySnapshot.forEach(doc => allOrders.push({ id: doc.id, ...doc.data() }));
+      allOrders.sort((a, b) => new Date(b.date) - new Date(a.date));
+      let ordersHtml = "";
+      allOrders.forEach(order => {
+        let itemsList = order.items.map(i => `${i.name} (x${i.qty})`).join(", ");
+        ordersHtml += `
+          <div class="order-card" style="margin-top:15px; padding:15px; border:1px solid var(--line); border-radius:10px; background:white;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+              <strong style="color:var(--forest); font-size:13px;">Order #${order.id.slice(-6).toUpperCase()}</strong>
+              <span style="padding:4px 8px; background:var(--mint); color:var(--forest); border-radius:6px; font-size:10px; font-weight:800;">${order.status}</span>
+            </div>
+            <p style="margin:5px 0; font-size:11px; color:var(--muted);">${order.date}</p>
+            <p style="margin:8px 0 5px; font-size:12px;"><strong>Items:</strong> ${itemsList}</p>
+            <p style="margin:5px 0; font-size:12px;"><strong>Total:</strong> ${money(order.total)}</p>
+          </div>
+        `;
+      });
+      ordersList.innerHTML = ordersHtml;
+    } catch (error) { ordersList.innerHTML = `<p style="color:red; text-align:center;">Error loading orders.</p>`; }
+  }
+
+  function renderProducts() {
+    const grid = byId("productGrid");
+    if (!grid) return;
+    let filtered = products.filter(p => (category === "All" || p.category === category) && p.name.toLowerCase().includes(search));
+    if (sort === "price-low") filtered.sort((a, b) => a.price - b.price);
+    if (sort === "price-high") filtered.sort((a, b) => b.price - a.price);
+    if (sort === "name") filtered.sort((a, b) => a.name.localeCompare(b.name));
     
     grid.innerHTML = filtered.map(p => {
       const q = cart.get(p.id) || 0;
-      const img = p.image ? `<img src="${p.image}">` : `<span>🛒</span>`;
+      const imageHtml = p.image ? `<img src="${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius: 12px;">` : `<span class="product-emoji" style="font-size:50px; display:grid; place-items:center; height:100%;">${p.emoji || '🛒'}</span>`;
       return `
         <article class="product-card">
-          <div class="product-image" data-open="${p.id}">${img}</div>
+          <div class="product-image" data-open-product="${p.id}" style="cursor:pointer;">${imageHtml}</div>
           <div class="product-info">
-            <h3 data-open="${p.id}">${p.name}</h3>
+            <p class="product-category">${p.category}</p>
+            <h3 data-open-product="${p.id}" style="cursor:pointer;">${p.name}</h3>
             <p class="product-unit">${p.unit}</p>
             <div class="product-bottom">
               <strong>${money(p.price)}</strong>
-              ${q ? `<div class="qty-control"><button data-dec="${p.id}">-</button><span>${q}</span><button data-inc="${p.id}">+</button></div>` 
-                  : `<button class="add-btn" data-add="${p.id}">Add +</button>`}
+              ${q ? `<div class="quantity-control"><button data-decrease="${p.id}">−</button><span>${q}</span><button data-increase="${p.id}">+</button></div>` : `<button class="add-button" data-add="${p.id}">Add +</button>`}
             </div>
           </div>
-        </article>`;
+        </article>
+      `;
     }).join("");
-
     if(byId("emptyState")) byId("emptyState").hidden = filtered.length !== 0;
   }
 
-  // 3. CART UI & LOGIC
+  function renderEssentials() {
+    const grid = byId("essentialsGrid");
+    if (grid) {
+      grid.innerHTML = products.filter(p => p.popular).map(p => {
+        const imageHtml = p.image ? `<img src="${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius: 12px;">` : `<span class="product-emoji" style="font-size:50px; display:grid; place-items:center; height:100%;">${p.emoji || '🛒'}</span>`;
+        return `
+        <article class="product-card">
+          <div class="product-image" data-open-product="${p.id}" style="cursor:pointer;">${imageHtml}</div>
+          <div class="product-info">
+            <p class="product-category">${p.category}</p>
+            <h3 data-open-product="${p.id}" style="cursor:pointer;">${p.name}</h3>
+            <p class="product-unit">${p.unit}</p>
+            <div class="product-bottom"><strong>${money(p.price)}</strong><button class="add-button" data-add="${p.id}">Add +</button></div>
+          </div>
+        </article>
+      `}).join("");
+    }
+  }
+
   function updateCartUI() {
     let count = 0, subtotal = 0;
-    cart.forEach((q, id) => { 
-      count += q; 
-      const p = products.find(x => x.id === id); 
-      if(p) subtotal += p.price * q; 
-    });
+    cart.forEach((q, id) => { count += q; const product = products.find(p => p.id === id); if(product) subtotal += product.price * q; });
     
+    // Yahan mobile cart count bhi update kar diya gaya hai
     if(byId("cartCount")) byId("cartCount").textContent = count;
-    renderProducts();
+    document.querySelectorAll(".mobile-cart-count").forEach(el => el.textContent = count);
+    
+    renderProducts(); renderEssentials();
+    
     if(currentModalProductId && !byId("productDialog").hidden) updateModalCartBtn();
 
     const contents = byId("cartContents");
     if(contents) {
-      if(count === 0) { 
-        contents.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--muted);"><h2>Basket is empty</h2><p>Add items to start shopping</p></div>`; 
+      if(count === 0) {
+        contents.innerHTML = `<div class="cart-empty"><span>▱</span><h3>Your basket is empty.</h3></div>`;
       } else {
-        let html = "";
+        let itemsHtml = "";
         cart.forEach((q, id) => {
-          const p = products.find(x => x.id === id);
-          if(p) html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:15px;">
-              <div>
-                <strong style="font-size:15px; color:var(--dark);">${p.name}</strong><br>
-                <small style="color:var(--muted);">${money(p.price)} x ${q}</small>
-              </div>
-              <button data-remove="${p.id}" style="color:#d32f2f; border:none; background:rgba(211,47,47,0.1); padding:8px 12px; border-radius:8px; font-weight:bold; cursor:pointer;">Remove</button>
-            </div>`;
+          const p = products.find(i => i.id === id);
+          if(p) itemsHtml += `<div class="cart-item" style="padding:10px; border-bottom:1px solid #ccc;"><strong>${p.name}</strong> (${money(p.price)} x ${q}) <button data-remove="${p.id}">Remove</button></div>`;
         });
-        contents.innerHTML = `${html}
-          <div style="font-size:18px; margin-top:20px; display:flex; justify-content:space-between;"><span>Total Amount:</span> <strong>${money(subtotal)}</strong></div>
-          <button class="btn-primary" id="proceedToCheckoutBtn" style="margin-top:20px;">Proceed to Checkout</button>`;
+        contents.innerHTML = `${itemsHtml}<div class="cart-summary" style="margin-top:20px; font-size:16px;">Total Amount: <strong>${money(subtotal)}</strong></div><button class="primary-button full-button" id="proceedToCheckoutBtn" style="margin-top:15px;">Checkout Now</button>`;
       }
     }
   }
 
-  // 4. DIALOG / MODAL CONTROLS
-  function openModal(id) { 
-    if(byId(id)) { byId(id).hidden = false; byId("dialogBackdrop").hidden = false; }
-  }
-  
-  function closeAll() {
-    ["authDialog", "cartDrawer", "locationDialog", "checkoutDialog", "ordersDialog", "productDialog"].forEach(id => {
-      if(byId(id)) byId(id).hidden = true;
-    });
-    if(byId("dialogBackdrop")) byId("dialogBackdrop").hidden = true; 
-    currentModalProductId = null;
-  }
-
-  // 5. PRODUCT DETAILS & WISHLIST
-  function openProductDetails(id) {
-    const p = products.find(x => x.id === id); if(!p) return;
+  function openProductModal(id) {
+    const p = products.find(item => item.id === id);
+    if(!p) return;
     currentModalProductId = p.id;
     
-    byId("modalProductImage").src = p.image || "";
+    byId("modalProductImage").src = p.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&q=80";
     byId("modalProductTitle").textContent = p.name;
     byId("modalProductCategory").textContent = p.category;
     byId("modalProductUnit").textContent = p.unit;
     byId("modalProductPrice").textContent = money(p.price);
     byId("modalDescName").textContent = p.name;
     
-    const wBtn = byId("wishlistBtn");
-    if(wishlist.includes(p.id)) { wBtn.textContent = "❤️"; wBtn.style.color = "red"; } 
-    else { wBtn.textContent = "🤍"; wBtn.style.color = "initial"; }
-    
-    updateModalCartBtn(); 
-    openModal("productDialog");
+    updateWishlistHeart(); updateModalCartBtn(); openPanel("productDialog");
+  }
+
+  function updateWishlistHeart() {
+    const btn = byId("wishlistBtn");
+    if(wishlist.includes(currentModalProductId)) { btn.textContent = "❤️"; btn.style.color = "red"; } 
+    else { btn.textContent = "🤍"; btn.style.color = "initial"; }
   }
 
   function updateModalCartBtn() {
+    const container = byId("modalCartControls");
     const q = cart.get(currentModalProductId) || 0;
-    const c = byId("modalCartControls");
     if(q > 0) {
-      c.innerHTML = `
-        <div class="qty-control" style="width:100%; justify-content:center; padding:10px 0;">
-          <button data-dec="${currentModalProductId}" style="padding:10px 30px;">-</button>
-          <span style="font-size:18px;">${q}</span>
-          <button data-inc="${currentModalProductId}" style="padding:10px 30px;">+</button>
-        </div>`;
+      container.innerHTML = `<div class="quantity-control" style="width:100%; display:flex; justify-content:center; padding:10px 0;"><button data-decrease="${currentModalProductId}" style="padding:10px 20px;">−</button><span style="padding:10px 30px; font-size:18px;">${q}</span><button data-increase="${currentModalProductId}" style="padding:10px 20px;">+</button></div>`;
     } else {
-      c.innerHTML = `<button class="btn-primary" data-add="${currentModalProductId}" style="margin:0;">Add to Cart</button>`;
+      container.innerHTML = `<button class="primary-button full-button" data-add="${currentModalProductId}">Add to Cart</button>`;
     }
   }
 
-  // 6. FIREBASE AUTH & BOTTOM NAV SECURITY
-  function setupAuth() {
-    let confirmResult, recaptcha;
-    try { recaptcha = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' }); } catch(e){}
+  function toast(msg) {
+    const t = byId("toast");
+    if(t) { t.textContent = msg; t.hidden = false; t.classList.add("show"); setTimeout(() => { t.hidden = true; t.classList.remove("show"); }, 3000); }
+  }
 
-    byId("phoneForm")?.addEventListener("submit", e => {
-      e.preventDefault(); 
-      const p = "+91" + byId("phoneInput").value;
-      byId("authMessage").textContent = "Sending OTP...";
-      signInWithPhoneNumber(auth, p, recaptcha).then(res => { 
-        confirmResult = res; 
-        byId("phoneForm").hidden = true; 
-        byId("otpForm").hidden = false; 
-        byId("authMessage").textContent = "OTP Sent!"; 
-      }).catch(err => {
-        byId("authMessage").textContent = "Failed. Try again.";
-        console.error(err);
+  function openPanel(id) { if(byId(id)) { byId(id).hidden = false; byId("dialogBackdrop").hidden = false; } }
+  function closePanels() {
+    ["authDialog", "cartDrawer", "locationDialog", "checkoutDialog", "ordersDialog", "productDialog"].forEach(id => { if(byId(id)) byId(id).hidden = true; });
+    if(byId("dialogBackdrop")) byId("dialogBackdrop").hidden = true; currentModalProductId = null;
+  }
+
+  function setupFirebaseAuth() {
+    const phoneForm = byId("phoneForm"), otpForm = byId("otpForm"), phoneInput = byId("phoneInput"), otpInput = byId("otpInput"), authMessage = byId("authMessage"), accountLabel = byId("accountLabel");
+    let confirmationResult = null, recaptchaVerifier = null;
+    try { recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' }); } catch (e) {}
+
+    phoneForm?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const phone = "+91" + phoneInput.value.trim();
+      if(phone.length !== 13) return (authMessage.textContent = "Enter valid 10-digit number.");
+      authMessage.textContent = "Sending OTP..."; authMessage.className = "form-message";
+      signInWithPhoneNumber(auth, phone, recaptchaVerifier).then((result) => {
+        confirmationResult = result; phoneForm.hidden = true; otpForm.hidden = false; authMessage.textContent = "OTP Sent!"; authMessage.className = "form-message success";
+      }).catch((error) => {
+        authMessage.textContent = "Failed to send OTP. Try again."; authMessage.className = "form-message error";
+        if(recaptchaVerifier) recaptchaVerifier.render().then(id => window.grecaptcha.reset(id));
       });
     });
 
-    byId("otpForm")?.addEventListener("submit", e => {
-      e.preventDefault(); 
-      byId("authMessage").textContent = "Verifying...";
-      confirmResult.confirm(byId("otpInput").value).then(() => { 
-        toast("Logged in successfully!"); 
-        closeAll(); 
-      }).catch(() => byId("authMessage").textContent = "Invalid OTP");
+    otpForm?.addEventListener("submit", (e) => {
+      e.preventDefault(); authMessage.textContent = "Verifying...";
+      confirmationResult.confirm(otpInput.value.trim()).then(() => {
+        authMessage.textContent = "Logged in successfully!"; authMessage.className = "form-message success";
+        setTimeout(() => { closePanels(); phoneForm.reset(); otpForm.reset(); phoneForm.hidden = false; otpForm.hidden = true; authMessage.textContent = ""; toast("Welcome back!"); }, 1000);
+      }).catch(() => { authMessage.textContent = "Invalid OTP."; authMessage.className = "form-message error"; });
     });
 
-    byId("backToPhoneBtn")?.addEventListener("click", () => {
-      byId("otpForm").hidden = true;
-      byId("phoneForm").hidden = false;
-      byId("authMessage").textContent = "";
-    });
+    byId("backToPhoneBtn")?.addEventListener("click", () => { otpForm.hidden = true; phoneForm.hidden = false; authMessage.textContent = ""; });
 
-    onAuthStateChanged(auth, user => {
-      const authItems = document.querySelectorAll(".auth-required");
-      const loginBtn = byId("loginBtn");
+    onAuthStateChanged(auth, (user) => {
+      const loginBtn = byId("loginBtn"); const newLoginBtn = loginBtn.cloneNode(true); loginBtn.parentNode.replaceChild(newLoginBtn, loginBtn);
+      const headerOrdersBtn = byId("headerOrdersBtn");
       
-      // Clone to remove old listeners securely
-      const newLoginBtn = loginBtn.cloneNode(true); 
-      loginBtn.parentNode.replaceChild(newLoginBtn, loginBtn);
-
+      // Bottom Nav buttons variables
+      const mobileOrdersBtn = byId("mobileOrdersBtn");
+      const mobileLoginBtn = byId("mobileLoginBtn");
+      
       if (user) {
-        byId("accountLabel").textContent = "My Account";
+        if(accountLabel) accountLabel.textContent = `+91 ${user.phoneNumber.slice(-4)}`;
         if(byId("customerPhone")) byId("customerPhone").value = user.phoneNumber.replace('+91','');
         
-        // Show protected bottom nav items
-        authItems.forEach(item => item.style.display = 'flex');
+        // Show Orders, Hide Login (Mobile & Desktop)
+        if(headerOrdersBtn) headerOrdersBtn.hidden = false;
+        if(mobileOrdersBtn) mobileOrdersBtn.style.display = "flex";
+        if(mobileLoginBtn) mobileLoginBtn.style.display = "none";
         
         newLoginBtn.addEventListener("click", () => { 
-          if(confirm("Do you want to log out?")) signOut(auth).then(()=> toast("Logged out")); 
+          if(confirm("Do you want to log out?")) signOut(auth).then(() => { 
+            toast("Logged out"); 
+            if(headerOrdersBtn) headerOrdersBtn.hidden = true; 
+            if(mobileOrdersBtn) mobileOrdersBtn.style.display = "none";
+            if(mobileLoginBtn) mobileLoginBtn.style.display = "flex";
+          }); 
         });
       } else {
-        byId("accountLabel").textContent = "Sign in";
+        if(accountLabel) accountLabel.textContent = "Sign in";
         
-        // Hide protected bottom nav items
-        authItems.forEach(item => item.style.display = 'none');
+        // Hide Orders, Show Login (Mobile & Desktop)
+        if(headerOrdersBtn) headerOrdersBtn.hidden = true;
+        if(mobileOrdersBtn) mobileOrdersBtn.style.display = "none";
+        if(mobileLoginBtn) mobileLoginBtn.style.display = "flex";
         
-        newLoginBtn.addEventListener("click", () => openModal("authDialog"));
+        newLoginBtn.addEventListener("click", () => openPanel("authDialog"));
       }
     });
   }
 
-  // 7. LOAD ORDERS
-  async function loadMyOrders() {
-    if(!auth.currentUser) return;
-    const ordersList = byId("ordersList");
-    ordersList.innerHTML = "<p style='text-align:center; margin-top:20px;'>Loading...</p>";
-    
-    try {
-      const qs = await getDocs(query(collection(db, "orders"), where("userId", "==", auth.currentUser.uid)));
-      if(qs.empty) { 
-        ordersList.innerHTML = `<div style='text-align:center; padding:30px; color:var(--muted);'><h3>No orders yet</h3></div>`; 
-        return; 
-      }
+  function setupOrderSystem() {
+    byId("checkoutForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if(cart.size === 0) return toast("Your cart is empty!");
       
-      let allOrders = [];
-      qs.forEach(d => allOrders.push({id: d.id, ...d.data()}));
-      allOrders.sort((a,b) => new Date(b.date) - new Date(a.date));
-      
-      let html = ""; 
-      allOrders.forEach(o => { 
-        let itemsStr = o.items.map(i => `${i.name} (x${i.qty})`).join(", ");
-        html += `
-          <div style="border:1px solid var(--border); padding:15px; margin-bottom:15px; border-radius:12px; background:white;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-              <strong style="color:var(--forest);">Order #${o.id.slice(-6).toUpperCase()}</strong>
-              <span style="background:var(--mint); color:var(--forest); padding:4px 8px; border-radius:6px; font-size:11px; font-weight:800;">${o.status}</span>
-            </div>
-            <p style="font-size:12px; color:var(--muted); margin-bottom:8px;">${o.date}</p>
-            <p style="font-size:13px; margin-bottom:8px;"><strong>Items:</strong> ${itemsStr}</p>
-            <p style="font-size:14px;"><strong>Total:</strong> ${money(o.total)}</p>
-          </div>`; 
-      });
-      ordersList.innerHTML = html;
-    } catch(e) {
-      ordersList.innerHTML = "<p style='color:red;'>Error loading orders.</p>";
-    }
+      if(!auth.currentUser) return toast("You must be logged in to order!");
+
+      const btn = e.target.querySelector("button[type='submit']"); btn.disabled = true; btn.textContent = "Placing Order...";
+      const orderItems = []; let totalAmount = 0;
+      cart.forEach((q, id) => { const p = products.find(i => i.id === id); if(p) { orderItems.push({ id: p.id, name: p.name, price: p.price, qty: q }); totalAmount += p.price * q; } });
+      const orderData = {
+        customerName: byId("customerName").value.trim(), customerPhone: byId("customerPhone").value.trim(), village: byId("checkoutVillage").value, address: byId("customerAddress").value.trim(), note: byId("orderNote").value.trim(), items: orderItems, total: totalAmount, status: "Pending", paymentMethod: "Cash on Delivery", date: new Date().toLocaleString(),
+        userId: auth.currentUser.uid 
+      };
+      try {
+        await addDoc(collection(db, "orders"), orderData);
+        toast("Order Placed Successfully! 🎉"); cart.clear(); updateCartUI(); closePanels(); e.target.reset();
+      } catch (error) { toast("Failed to place order."); } finally { btn.disabled = false; btn.textContent = "Confirm Order (Cash on Delivery)"; }
+    });
   }
 
-  function toast(msg) { 
-    const t = byId("toast"); 
-    t.textContent = msg; 
-    t.hidden = false; 
-    t.classList.add("show"); 
-    setTimeout(() => { t.classList.remove("show"); t.hidden = true; }, 3000); 
-  }
-
-  // 8. EVENT DELEGATION & INIT
   function init() {
-    setupAuth(); 
-    loadProducts();
-    
+    setupFirebaseAuth(); setupOrderSystem(); loadProducts();
+
     document.addEventListener("click", e => {
-      const t = e.target;
+      const add = e.target.closest("[data-add]"), inc = e.target.closest("[data-increase]"), dec = e.target.closest("[data-decrease]"), rem = e.target.closest("[data-remove]"), close = e.target.closest("[data-close]"), filter = e.target.closest("[data-filter]"), openProd = e.target.closest("[data-open-product]");
       
-      // Cart Controls
-      if(t.closest("[data-add]")) { const id = t.closest("[data-add]").dataset.add; cart.set(id, (cart.get(id)||0)+1); toast("Added to Basket!"); updateCartUI(); }
-      if(t.closest("[data-inc]")) { const id = t.closest("[data-inc]").dataset.inc; cart.set(id, cart.get(id)+1); updateCartUI(); }
-      if(t.closest("[data-dec]")) { const id = t.closest("[data-dec]").dataset.dec; if(cart.get(id)>1) cart.set(id, cart.get(id)-1); else cart.delete(id); updateCartUI(); }
-      if(t.closest("[data-remove]")) { cart.delete(t.closest("[data-remove]").dataset.remove); updateCartUI(); }
-      
-      // Modal Controls
-      if(t.closest("[data-close]")) closeAll();
-      if(t.closest("[data-open]")) openProductDetails(t.closest("[data-open]").dataset.open);
-      
-      // Category Filter Chips
-      if(t.closest(".filter-chip")) {
-        const chip = t.closest(".filter-chip");
-        document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
-        chip.classList.add("active");
-        categoryFilter = chip.dataset.filter;
-        renderProducts();
-      }
-      
-      // Security: Login check before checkout
-      if(t.id === "proceedToCheckoutBtn") {
-        if(!auth.currentUser) { 
-          closeAll(); 
-          toast("Please sign in to place an order!"); 
-          openModal("authDialog"); 
+      if(add) { cart.set(add.dataset.add, (cart.get(add.dataset.add) || 0) + 1); toast("Added to cart"); updateCartUI(); }
+      if(inc) { const id = inc.dataset.increase; cart.set(id, cart.get(id) + 1); updateCartUI(); }
+      if(dec) { const id = dec.dataset.decrease; if(cart.get(id) > 1) cart.set(id, cart.get(id) - 1); else cart.delete(id); updateCartUI(); }
+      if(rem) { cart.delete(rem.dataset.remove); updateCartUI(); }
+      if(close) closePanels();
+      if(filter) { document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active")); filter.classList.add("active"); category = filter.dataset.filter; renderProducts(); }
+      if(openProd) { openProductModal(openProd.dataset.openProduct); }
+
+      if(e.target.id === "proceedToCheckoutBtn") {
+        if (!auth.currentUser) {
+          closePanels();
+          toast("Please sign in to place an order!");
+          openPanel("authDialog");
           return; 
         }
-        closeAll(); 
-        let sub = 0; 
-        cart.forEach((q, id) => { sub += products.find(x => x.id === id).price * q; });
-        byId("checkoutSummary").innerHTML = `You are paying: <strong style="color:var(--forest)">${money(sub)}</strong>`; 
-        openModal("checkoutDialog");
+        
+        closePanels(); openPanel("checkoutDialog"); let subtotal = 0;
+        cart.forEach((q, id) => { const p = products.find(i => i.id === id); if(p) subtotal += p.price * q; });
+        byId("checkoutSummary").innerHTML = `You are paying: <strong style="color:var(--forest)">${money(subtotal)}</strong>`;
       }
       
-      // Wishlist & Share logic
-      if(t.closest("#wishlistBtn") && currentModalProductId) {
-        if(wishlist.includes(currentModalProductId)) { 
-          wishlist = wishlist.filter(x => x !== currentModalProductId); 
-          toast("Removed from Wishlist"); 
-        } else { 
-          wishlist.push(currentModalProductId); 
-          toast("Added to Wishlist ❤️"); 
-        }
-        localStorage.setItem('grocery_wishlist', JSON.stringify(wishlist)); 
-        openProductDetails(currentModalProductId);
+      if(e.target.id === "wishlistBtn" && currentModalProductId) {
+         if(wishlist.includes(currentModalProductId)) {
+             wishlist = wishlist.filter(id => id !== currentModalProductId); toast("Removed from wishlist");
+         } else {
+             wishlist.push(currentModalProductId); toast("Added to wishlist ❤️");
+         }
+         localStorage.setItem('grocery_wishlist', JSON.stringify(wishlist)); updateWishlistHeart();
       }
-      
-      if(t.id === "shareProductBtn" && currentModalProductId) {
+
+      if(e.target.id === "shareProductBtn" && currentModalProductId) {
          const p = products.find(i => i.id === currentModalProductId);
          if(p) {
-             const shareText = `Check out ${p.name} on Grocery Hut! Order now: ${window.location.href}`;
+             const shareText = `Check out ${p.name} for ${money(p.price)} on Grocery Hut! Order now: ${window.location.href}`;
              if (navigator.share) { navigator.share({ title: p.name, text: shareText, url: window.location.href }).catch(console.error); } 
-             else { navigator.clipboard.writeText(shareText); toast("Link copied!"); }
+             else { navigator.clipboard.writeText(shareText); toast("Link copied to share!"); }
          }
       }
     });
 
-    // Inputs & Listeners
-    byId("searchInput")?.addEventListener("input", renderProducts);
+    byId("cartBtn")?.addEventListener("click", () => openPanel("cartDrawer"));
+    byId("locationBtn")?.addEventListener("click", () => openPanel("locationDialog"));
+    byId("saveLocationBtn")?.addEventListener("click", () => { const val = byId("villageSelect").value; if(val) { selectedVillage = val; byId("selectedLocation").textContent = val; closePanels(); toast(`Location set to ${val}`); } });
+    byId("searchInput")?.addEventListener("input", e => { search = e.target.value.toLowerCase(); renderProducts(); });
+    byId("sortSelect")?.addEventListener("change", e => { sort = e.target.value; renderProducts(); });
+    byId("headerOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
+    byId("footerOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
     
-    // Bottom Nav & Top Bar Listeners
-    byId("cartBtn")?.addEventListener("click", () => { closeAll(); openModal("cartDrawer"); });
-    byId("navOrdersBtn")?.addEventListener("click", () => { closeAll(); openModal("ordersDialog"); loadMyOrders(); });
-    byId("navWishlistBtn")?.addEventListener("click", () => { toast("Wishlist items will appear here soon!"); });
-    byId("navHomeBtn")?.addEventListener("click", closeAll);
-    
-    byId("locationBtn")?.addEventListener("click", () => openModal("locationDialog"));
-    byId("saveLocationBtn")?.addEventListener("click", () => { 
-      const val = byId("villageSelect").value;
-      if(val) {
-        byId("selectedLocation").textContent = val + " ⌄"; 
-        closeAll(); 
-        toast(`Location set to ${val}`);
-      }
-    });
-
-    // Place Order Form Submission
-    byId("checkoutForm")?.addEventListener("submit", async e => {
-      e.preventDefault();
-      if(!auth.currentUser) return;
-      
-      const btn = e.target.querySelector("button"); 
-      btn.disabled = true; btn.textContent = "Placing Order...";
-      
-      let items = [], total = 0; 
-      cart.forEach((q, id) => { 
-        const p = products.find(x => x.id === id); 
-        items.push({ id: p.id, name: p.name, qty: q, price: p.price}); 
-        total += p.price * q; 
-      });
-      
-      try {
-        await addDoc(collection(db, "orders"), { 
-          userId: auth.currentUser.uid, 
-          customerName: byId("customerName").value, 
-          customerPhone: byId("customerPhone").value,
-          village: byId("checkoutVillage").value,
-          address: byId("customerAddress").value, 
-          note: byId("orderNote").value,
-          items, 
-          total, 
-          status: "Pending", 
-          date: new Date().toLocaleString() 
-        });
-        toast("Order Placed Successfully! 🎉"); 
-        cart.clear(); updateCartUI(); closeAll(); e.target.reset();
-      } catch(e) { 
-        toast("Error placing order"); 
-        console.error(e);
-      } finally { 
-        btn.disabled = false; btn.textContent = "Place Order (COD)"; 
-      }
-    });
+    // Mobile Bottom Nav Listeners (Naya Feature)
+    byId("mobileCartBtn")?.addEventListener("click", () => openPanel("cartDrawer"));
+    byId("mobileOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
+    byId("mobileLoginBtn")?.addEventListener("click", () => openPanel("authDialog"));
   }
-  
+
   return { init };
 })();
 document.addEventListener("DOMContentLoaded", GroceryHut.init);
