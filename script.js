@@ -5,8 +5,17 @@ import {
 
 const GroceryHut = (() => {
   let products = [];
-  const savedCart = JSON.parse(localStorage.getItem('grocery_cart')) || [];
-const cart = new Map(savedCart);
+  
+  // 1. Yahan hum Map ki jagah seedha ek Normal JavaScript Object use karenge (LocalStorage ke liye sabse best!)
+  let cartObj = JSON.parse(localStorage.getItem('grocery_cart_obj')) || {};
+  const cart = new Map(Object.entries(cartObj));
+
+  // Is helper function se cart turant localStorage mein save ho jayega
+  function saveCartToStorage() {
+    const obj = Object.fromEntries(cart);
+    localStorage.setItem('grocery_cart_obj', JSON.stringify(obj));
+  }
+
   let wishlist = JSON.parse(localStorage.getItem('grocery_wishlist')) || [];
   let category = "All";
   let search = "";
@@ -117,7 +126,7 @@ const cart = new Map(savedCart);
   }
 
   function updateCartUI() {
-    localStorage.setItem('grocery_cart', JSON.stringify(Array.from(cart.entries())));
+    saveCartToStorage();
     let count = 0, subtotal = 0;
     cart.forEach((q, id) => { count += q; const product = products.find(p => p.id === id); if(product) subtotal += product.price * q; });
     if(byId("cartCount")) byId("cartCount").textContent = count;
@@ -244,7 +253,7 @@ const cart = new Map(savedCart);
       try {
         await addDoc(collection(db, "orders"), orderData);
         toast("Order Placed Successfully! 🎉"); cart.clear();
-        localStorage.removeItem('grocery_cart');
+        localStorage.removeItem('grocery_cart_obj');
         updateCartUI(); closePanels(); e.target.reset();
       } catch (error) { toast("Failed to place order."); } finally { btn.disabled = false; btn.textContent = "Confirm Order (Cash on Delivery)"; }
     });
