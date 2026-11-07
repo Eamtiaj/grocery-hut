@@ -183,39 +183,45 @@ main { width: min(1380px, 91%); margin: 0 auto; }
 }
 
 /* ========================================= */
-/* MOBILE SCREEN OVERFLOW & HEADER FIT FIX   */
+/* SUPER MOBILE FIX - HEADER & OVERFLOW      */
 /* ========================================= */
 html, body {
     width: 100% !important;
     max-width: 100vw !important;
-    overflow-x: hidden !important;
+    overflow-x: hidden !important; /* Screen hilna band */
     margin: 0 !important;
     padding: 0 !important;
 }
 
-* {
-    box-sizing: border-box !important;
-}
-
 @media screen and (max-width: 480px) {
+    /* Header ko screen ke andar lock karna */
     .header-content {
         width: 100% !important;
-        padding: 10px 5px !important;
-        gap: 5px !important;
+        display: flex !important;
+        flex-wrap: wrap !important; /* BUTTON BAHAR NA JAYE, NEECHE AA JAYE */
         justify-content: space-between !important;
+        align-items: center !important;
+        padding: 10px 5px !important;
     }
-    .header-actions {
-        gap: 4px !important;
-    }
-    .header-actions button {
-        padding: 5px 8px !important;
-        font-size: 11px !important;
-        white-space: nowrap !important;
-    }
+    
+    /* Logo ko thoda chhota karna */
     .logo-text, .logo h1 {
-        font-size: 18px !important;
+        font-size: 16px !important;
     }
-    .search-container, .search-bar {
+    
+    /* Buttons ko chhota karke paas lana */
+    .header-actions {
+        display: flex !important;
+        gap: 3px !important;
+    }
+    
+    .header-actions button {
+        padding: 5px 6px !important;
+        font-size: 10px !important; /* Font chhota taaki fit aa jaye */
+    }
+    
+    .search-container {
         width: 100% !important;
+        margin-top: 5px !important;
     }
 }
