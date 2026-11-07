@@ -5,7 +5,8 @@ import {
 
 const GroceryHut = (() => {
   let products = [];
-  const cart = new Map();
+  const savedCart = JSON.parse(localStorage.getItem('grocery_cart')) || [];
+const cart = new Map(savedCart);
   let wishlist = JSON.parse(localStorage.getItem('grocery_wishlist')) || [];
   let category = "All";
   let search = "";
@@ -116,6 +117,7 @@ const GroceryHut = (() => {
   }
 
   function updateCartUI() {
+    localStorage.setItem('grocery_cart', JSON.stringify(Array.from(cart.entries())));
     let count = 0, subtotal = 0;
     cart.forEach((q, id) => { count += q; const product = products.find(p => p.id === id); if(product) subtotal += product.price * q; });
     if(byId("cartCount")) byId("cartCount").textContent = count;
@@ -241,7 +243,9 @@ const GroceryHut = (() => {
       };
       try {
         await addDoc(collection(db, "orders"), orderData);
-        toast("Order Placed Successfully! 🎉"); cart.clear(); updateCartUI(); closePanels(); e.target.reset();
+        toast("Order Placed Successfully! 🎉"); cart.clear();
+        localStorage.removeItem('grocery_cart');
+        updateCartUI(); closePanels(); e.target.reset();
       } catch (error) { toast("Failed to place order."); } finally { btn.disabled = false; btn.textContent = "Confirm Order (Cash on Delivery)"; }
     });
   }
