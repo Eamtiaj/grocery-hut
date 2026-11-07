@@ -182,41 +182,40 @@ main { width: min(1380px, 91%); margin: 0 auto; }
   font-size: 17px;
 }
 
-/* Mobile screen ke liye chhota adjustment */
-@media (max-width: 760px) {
-  .fancy-orders-button {
-    padding: 0 9px;
-    font-size: 10px;
-    min-height: 36px;
-  }
-  .fancy-orders-button .order-icon {
-    font-size: 14px;
-  }
-}
 /* ========================================= */
-/* MOBILE SCREEN OVERFLOW FIX                */
+/* MOBILE SCREEN OVERFLOW & HEADER FIT FIX   */
 /* ========================================= */
 html, body {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden !important; /* Ye screen ko left-right hilne se rokega */
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
-/* Mobile screens ke liye buttons ko adjust karna */
+* {
+    box-sizing: border-box !important;
+}
+
 @media screen and (max-width: 480px) {
     .header-content {
+        width: 100% !important;
+        padding: 10px 5px !important;
         gap: 5px !important;
-        padding: 10px 8px !important;
+        justify-content: space-between !important;
     }
     .header-actions {
-        gap: 5px !important;
+        gap: 4px !important;
     }
     .header-actions button {
-        padding: 6px 8px !important;
-        font-size: 12px !important;
+        padding: 5px 8px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+    .logo-text, .logo h1 {
+        font-size: 18px !important;
     }
     .search-container, .search-bar {
         width: 100% !important;
-        box-sizing: border-box !important;
     }
 }
