@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grocery-Hut | Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'DM Sans', sans-serif; background: #f0f4e9; padding: 20px; color: #173f30; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 30px; }
+    h1, h2 { color: #173f30; margin-top: 0; }
+    label { display: block; margin: 15px 0 5px; font-weight: 600; font-size: 13px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+    button { margin-top: 20px; background: #173f30; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+    button:hover { background: #285c45; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #173f30; color: white; padding: 10px 20px; border-radius: 8px; display: none; z-index: 1000; }
+    
+    /* Order Card Styling */
+    .order-card { border: 1px solid #e1e5dc; padding: 15px; border-radius: 10px; margin-bottom: 15px; background: #faf8f1; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e1e5dc; padding-bottom: 10px; }
+    .order-badge { background: #e9f09b; color: #173f30; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+    .order-details p { margin: 5px 0; font-size: 13px; }
+    .action-row { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+    .action-row select { width: auto; margin: 0; padding: 8px; }
+    .action-row button { width: auto; margin: 0; padding: 8px 15px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>👑 Admin Dashboard</h1>
+
+    <!-- 1. ADD PRODUCT SECTION -->
+    <div class="card">
+      <h2>🛒 Add New Product</h2>
+      <form id="addProductForm">
+        <label>Product Name</label>
+        <input type="text" id="pName" placeholder="e.g. Fresh Tomatoes" required>
+
+        <label>Category</label>
+        <select id="pCategory" required>
+          <option value="Vegetables">Vegetables</option>
+          <option value="Fruits">Fruits</option>
+          <option value="Staples">Staples</option>
+          <option value="Dairy">Dairy</option>
+          <option value="Snacks">Snacks</option>
+          <option value="Household">Household</option>
+        </select>
+
+        <label>Price (₹)</label>
+        <input type="number" id="pPrice" placeholder="e.g. 40" required>
+
+        <label>Unit (Quantity)</label>
+        <input type="text" id="pUnit" placeholder="e.g. 1 kg or 500 ml" required>
+
+        <label>Photo Image URL (ImgBB Direct Link)</label>
+        <input type="url" id="pImage" placeholder="https://i.ibb.co/..." required>
+
+        <button type="submit">Upload Product to Store</button>
+      </form>
+    </div>
+
+    <!-- 2. LIVE ORDERS SECTION -->
+    <div class="card">
+      <h2>📦 Live Customer Orders</h2>
+      <div id="ordersContainer">
+        <p>Loading orders...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="adminToast">Action Successful!</div>
+
+  <!-- ADMIN FIREBASE LOGIC -->
+  <script type="module">
+    // Naye imports add kiye gaye hain: getDocs, doc, updateDoc
+    import { db, collection, addDoc, getDocs, doc, updateDoc } from "./firebase.js";
+
+    const form = document.getElementById("addProductForm");
+    const toast = document.getElementById("adminToast");
+    const ordersContainer = document.getElementById("ordersContainer");
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3000);
+    }
+
+    // --- PRODUCT UPLOAD LOGIC ---
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector("button");
+      btn.textContent = "Uploading..."; btn.disabled = true;
+
+      const newProduct = {
+        name: document.getElementById("pName").value.trim(),
+        category: document.getElementById("pCategory").value,
+        price: Number(document.getElementById("pPrice").value),
+        unit: document.getElementById("pUnit").value.trim(),
+        image: document.getElementById("pImage").value.trim(),
+        popular: false 
+      };
+
+      try {
+        await addDoc(collection(db, "products"), newProduct);
+        showToast("Product Added Successfully!");
+        form.reset();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to add product!");
+      } finally {
+        btn.textContent = "Upload Product to Store"; btn.disabled = false;
+      }
+    });
+
+    // --- LIVE ORDERS FETCH LOGIC ---
+    async function loadAdminOrders() {
+      try {
+        const snapshot = await getDocs(collection(db, "orders"));
+        if (snapshot.empty) {
+          ordersContainer.innerHTML = "<p>No orders yet!</p>";
+          return;
+        }
+
+        let orders = [];
+        snapshot.forEach(doc => orders.push({ id: doc.id, ...doc.data() }));
+        
+        // Naye orders upar dikhane ke liye sort karna
+        orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let html = "";
+        orders.forEach(order => {
+          let itemsList = order.items.map(i => `${i.name} (x${i.qty})`).join(", ");
+          html += `
+            <div class="order-card">
+              <div class="order-header">
+                <strong>Order #${order.id.slice(-6).toUpperCase()}</strong>
+                <span class="order-badge">${order.status}</span>
+              </div>
+              <div class="order-details">
+                <p><strong>Customer:</strong> ${order.customerName} (📞 ${order.customerPhone})</p>
+                <p><strong>Delivery:</strong> ${order.address}, ${order.village}</p>
+                <p><strong>Note:</strong> ${order.note || "No note"}</p>
+                <p><strong>Items:</strong> ${itemsList}</p>
+                <p><strong>Total Bill:</strong> ₹${order.total} (${order.paymentMethod})</p>
+                <p><strong>Date:</strong> ${order.date}</p>
+              </div>
+              
+              <!-- Status Update Row -->
+              <div class="action-row">
+                <select id="status-${order.id}">
+                  <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                  <option value="Packing" ${order.status === 'Packing' ? 'selected' : ''}>Packing</option>
+                  <option value="Out for Delivery" ${order.status === 'Out for Delivery' ? 'selected' : ''}>Out for Delivery</option>
+                  <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                  <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+                <button class="update-btn" data-id="${order.id}">Update Status</button>
+              </div>
+            </div>
+          `;
+        });
+        ordersContainer.innerHTML = html;
+
+        // Button clicks par status update karna
+        document.querySelectorAll(".update-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const orderId = e.target.getAttribute("data-id");
+            const newStatus = document.getElementById(`status-${orderId}`).value;
+            
+            e.target.textContent = "Updating...";
+            e.target.disabled = true;
+
+            try {
+              // Firebase me order ka status update karna
+              await updateDoc(doc(db, "orders", orderId), { status: newStatus });
+              showToast("Order Status Updated!");
+              loadAdminOrders(); // Page ko refresh kiye bina UI update karna
+            } catch (err) {
+              console.error(err);
+              alert("Failed to update status");
+              e.target.textContent = "Update Status";
+              e.target.disabled = false;
+            }
+          });
+        });
+
+      } catch (error) {
+        console.error(error);
+        ordersContainer.innerHTML = "<p style='color:red;'>Error loading orders.</p>";
+      }
+    }
+
+    // Load orders jab admin page khule
+    loadAdminOrders();
+  </script>
+</body>
+</html>
