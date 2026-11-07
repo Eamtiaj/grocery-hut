@@ -193,3 +193,46 @@ main { width: min(1380px, 91%); margin: 0 auto; }
     font-size: 14px;
   }
 }
+/* ========================================== */
+/* FINAL MOBILE OVERFLOW FIX                  */
+/* ========================================== */
+
+/* 1. Screen Hilna 100% Band */
+html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+}
+
+@media (max-width: 768px) {
+    /* 2. Top Black Bar Fix */
+    .announcement { 
+        height: auto !important; 
+        padding: 8px 5px !important; 
+    }
+    .announcement p { 
+        white-space: normal !important; 
+        line-height: 1.4 !important; 
+    }
+
+    /* 3. Header Buttons Fix (Chhote aur fit) */
+    .header-actions {
+        gap: 5px !important;
+        flex-wrap: wrap !important;
+    }
+    .account-button, .cart-button, .fancy-orders-button {
+        padding: 5px 8px !important;
+        font-size: 10px !important;
+        min-height: 32px !important;
+    }
+    .account-button > span:first-child, .cart-button > span:first-child, .fancy-orders-button > .order-icon {
+        font-size: 14px !important;
+    }
+
+    /* 4. White Boxes (Service Strip) Fix - Ye sabse badi problem thi */
+    .service-strip {
+        grid-template-columns: 1fr !important; /* Mobile par 3 ki jagah 1 ke neeche 1 box aayega */
+        padding: 15px !important;
+        gap: 15px !important;
+    }
+}
