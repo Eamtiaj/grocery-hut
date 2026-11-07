@@ -5,20 +5,13 @@ import {
 
 const GroceryHut = (() => {
   let products = [];
-  const initialProducts = [
-    { name: "Premium Atta", category: "Staples", price: 280, unit: "5 kg", emoji: "🌾", popular: true },
-    { name: "Daily Rice", category: "Staples", price: 320, unit: "5 kg", emoji: "🍚", popular: true },
-    { name: "Cooking Oil", category: "Staples", price: 145, unit: "1 litre", emoji: "🫗", popular: true },
-    { name: "Toor Dal", category: "Staples", price: 120, unit: "1 kg", emoji: "🫘", popular: false },
-    { name: "Tea Biscuits", category: "Snacks", price: 30, unit: "Pack", emoji: "🍪", popular: true },
-    { name: "Fresh Milk", category: "Dairy", price: 30, unit: "500 ml", emoji: "🥛", popular: true }
-  ];
-
   const cart = new Map();
+  let wishlist = JSON.parse(localStorage.getItem('grocery_wishlist')) || [];
   let category = "All";
   let search = "";
   let sort = "default";
   let selectedVillage = "";
+  let currentModalProductId = null;
   
   const byId = id => document.getElementById(id);
   const money = amount => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(amount);
@@ -26,11 +19,6 @@ const GroceryHut = (() => {
   async function loadProducts() {
     try {
       const querySnapshot = await getDocs(collection(db, "products"));
-      if (querySnapshot.empty) {
-        toast("First time setup: Uploading products...");
-        for (const item of initialProducts) await addDoc(collection(db, "products"), item);
-        return loadProducts();
-      }
       products = [];
       querySnapshot.forEach((doc) => products.push({ id: doc.id, ...doc.data() }));
       renderProducts();
@@ -45,29 +33,21 @@ const GroceryHut = (() => {
   async function loadMyOrders() {
     const ordersList = byId("ordersList");
     if (!ordersList) return;
-
     if (!auth.currentUser) {
       ordersList.innerHTML = `<div class="empty-state"><h3>Not Signed In</h3><p>Please log in to see your orders.</p></div>`;
       return;
     }
-
     ordersList.innerHTML = `<p style="text-align:center; padding: 20px;">Loading your orders...</p>`;
-
     try {
       const q = query(collection(db, "orders"), where("userId", "==", auth.currentUser.uid));
       const querySnapshot = await getDocs(q);
-
       if (querySnapshot.empty) {
-        ordersList.innerHTML = `<div class="empty-state"><span style="font-size:40px;">📦</span><h3>No orders yet</h3><p>When you place an order, it will appear here.</p></div>`;
+        ordersList.innerHTML = `<div class="empty-state"><span style="font-size:40px;">📦</span><h3>No orders yet</h3></div>`;
         return;
       }
-
       let allOrders = [];
       querySnapshot.forEach(doc => allOrders.push({ id: doc.id, ...doc.data() }));
-      
-      // Sort: naye orders upar
       allOrders.sort((a, b) => new Date(b.date) - new Date(a.date));
-
       let ordersHtml = "";
       allOrders.forEach(order => {
         let itemsList = order.items.map(i => `${i.name} (x${i.qty})`).join(", ");
@@ -80,15 +60,11 @@ const GroceryHut = (() => {
             <p style="margin:5px 0; font-size:11px; color:var(--muted);">${order.date}</p>
             <p style="margin:8px 0 5px; font-size:12px;"><strong>Items:</strong> ${itemsList}</p>
             <p style="margin:5px 0; font-size:12px;"><strong>Total:</strong> ${money(order.total)}</p>
-            <p style="margin:5px 0; font-size:11px; color:var(--muted);">Delivery: ${order.village}</p>
           </div>
         `;
       });
       ordersList.innerHTML = ordersHtml;
-    } catch (error) {
-      console.error(error);
-      ordersList.innerHTML = `<p style="color:red; text-align:center;">Error loading orders.</p>`;
-    }
+    } catch (error) { ordersList.innerHTML = `<p style="color:red; text-align:center;">Error loading orders.</p>`; }
   }
 
   function renderProducts() {
@@ -101,18 +77,13 @@ const GroceryHut = (() => {
     
     grid.innerHTML = filtered.map(p => {
       const q = cart.get(p.id) || 0;
-      
-      // LOGIC: Agar image link hai toh Photo dikhao, warna Emoji dikhao
-      const imageHtml = p.image 
-        ? `<img src="${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius: 12px;">` 
-        : `<span class="product-emoji" style="font-size:50px; display:grid; place-items:center; height:100%;">${p.emoji || '🛒'}</span>`;
-
+      const imageHtml = p.image ? `<img src="${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius: 12px;">` : `<span class="product-emoji" style="font-size:50px; display:grid; place-items:center; height:100%;">${p.emoji || '🛒'}</span>`;
       return `
         <article class="product-card">
-          <div class="product-image">${imageHtml}</div>
+          <div class="product-image" data-open-product="${p.id}" style="cursor:pointer;">${imageHtml}</div>
           <div class="product-info">
             <p class="product-category">${p.category}</p>
-            <h3>${p.name}</h3>
+            <h3 data-open-product="${p.id}" style="cursor:pointer;">${p.name}</h3>
             <p class="product-unit">${p.unit}</p>
             <div class="product-bottom">
               <strong>${money(p.price)}</strong>
@@ -129,17 +100,13 @@ const GroceryHut = (() => {
     const grid = byId("essentialsGrid");
     if (grid) {
       grid.innerHTML = products.filter(p => p.popular).map(p => {
-        // LOGIC: Agar image link hai toh Photo dikhao, warna Emoji dikhao
-        const imageHtml = p.image 
-          ? `<img src="${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius: 12px;">` 
-          : `<span class="product-emoji" style="font-size:50px; display:grid; place-items:center; height:100%;">${p.emoji || '🛒'}</span>`;
-
+        const imageHtml = p.image ? `<img src="${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius: 12px;">` : `<span class="product-emoji" style="font-size:50px; display:grid; place-items:center; height:100%;">${p.emoji || '🛒'}</span>`;
         return `
         <article class="product-card">
-          <div class="product-image">${imageHtml}</div>
+          <div class="product-image" data-open-product="${p.id}" style="cursor:pointer;">${imageHtml}</div>
           <div class="product-info">
             <p class="product-category">${p.category}</p>
-            <h3>${p.name}</h3>
+            <h3 data-open-product="${p.id}" style="cursor:pointer;">${p.name}</h3>
             <p class="product-unit">${p.unit}</p>
             <div class="product-bottom"><strong>${money(p.price)}</strong><button class="add-button" data-add="${p.id}">Add +</button></div>
           </div>
@@ -150,13 +117,11 @@ const GroceryHut = (() => {
 
   function updateCartUI() {
     let count = 0, subtotal = 0;
-    cart.forEach((q, id) => {
-      count += q;
-      const product = products.find(p => p.id === id);
-      if(product) subtotal += product.price * q;
-    });
+    cart.forEach((q, id) => { count += q; const product = products.find(p => p.id === id); if(product) subtotal += product.price * q; });
     if(byId("cartCount")) byId("cartCount").textContent = count;
     renderProducts(); renderEssentials();
+    
+    if(currentModalProductId && !byId("productDialog").hidden) updateModalCartBtn();
 
     const contents = byId("cartContents");
     if(contents) {
@@ -173,21 +138,46 @@ const GroceryHut = (() => {
     }
   }
 
-  function toast(msg) {
-    const t = byId("toast");
-    if(t) {
-      t.textContent = msg; t.hidden = false; t.classList.add("show");
-      setTimeout(() => { t.hidden = true; t.classList.remove("show"); }, 3000);
+  function openProductModal(id) {
+    const p = products.find(item => item.id === id);
+    if(!p) return;
+    currentModalProductId = p.id;
+    
+    byId("modalProductImage").src = p.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&q=80";
+    byId("modalProductTitle").textContent = p.name;
+    byId("modalProductCategory").textContent = p.category;
+    byId("modalProductUnit").textContent = p.unit;
+    byId("modalProductPrice").textContent = money(p.price);
+    byId("modalDescName").textContent = p.name;
+    
+    updateWishlistHeart(); updateModalCartBtn(); openPanel("productDialog");
+  }
+
+  function updateWishlistHeart() {
+    const btn = byId("wishlistBtn");
+    if(wishlist.includes(currentModalProductId)) { btn.textContent = "❤️"; btn.style.color = "red"; } 
+    else { btn.textContent = "🤍"; btn.style.color = "initial"; }
+  }
+
+  function updateModalCartBtn() {
+    const container = byId("modalCartControls");
+    const q = cart.get(currentModalProductId) || 0;
+    if(q > 0) {
+      container.innerHTML = `<div class="quantity-control" style="width:100%; display:flex; justify-content:center; padding:10px 0;"><button data-decrease="${currentModalProductId}" style="padding:10px 20px;">−</button><span style="padding:10px 30px; font-size:18px;">${q}</span><button data-increase="${currentModalProductId}" style="padding:10px 20px;">+</button></div>`;
+    } else {
+      container.innerHTML = `<button class="primary-button full-button" data-add="${currentModalProductId}">Add to Cart</button>`;
     }
   }
 
-  function openPanel(id) {
-    if(byId(id)) { byId(id).hidden = false; byId("dialogBackdrop").hidden = false; }
+  function toast(msg) {
+    const t = byId("toast");
+    if(t) { t.textContent = msg; t.hidden = false; t.classList.add("show"); setTimeout(() => { t.hidden = true; t.classList.remove("show"); }, 3000); }
   }
 
+  function openPanel(id) { if(byId(id)) { byId(id).hidden = false; byId("dialogBackdrop").hidden = false; } }
   function closePanels() {
-    ["authDialog", "cartDrawer", "locationDialog", "checkoutDialog", "ordersDialog"].forEach(id => { if(byId(id)) byId(id).hidden = true; });
-    if(byId("dialogBackdrop")) byId("dialogBackdrop").hidden = true;
+    ["authDialog", "cartDrawer", "locationDialog", "checkoutDialog", "ordersDialog", "productDialog"].forEach(id => { if(byId(id)) byId(id).hidden = true; });
+    if(byId("dialogBackdrop")) byId("dialogBackdrop").hidden = true; currentModalProductId = null;
   }
 
   function setupFirebaseAuth() {
@@ -209,8 +199,7 @@ const GroceryHut = (() => {
     });
 
     otpForm?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      authMessage.textContent = "Verifying...";
+      e.preventDefault(); authMessage.textContent = "Verifying...";
       confirmationResult.confirm(otpInput.value.trim()).then(() => {
         authMessage.textContent = "Logged in successfully!"; authMessage.className = "form-message success";
         setTimeout(() => { closePanels(); phoneForm.reset(); otpForm.reset(); phoneForm.hidden = false; otpForm.hidden = true; authMessage.textContent = ""; toast("Welcome back!"); }, 1000);
@@ -220,25 +209,13 @@ const GroceryHut = (() => {
     byId("backToPhoneBtn")?.addEventListener("click", () => { otpForm.hidden = true; phoneForm.hidden = false; authMessage.textContent = ""; });
 
     onAuthStateChanged(auth, (user) => {
-      const loginBtn = byId("loginBtn");
-      const newLoginBtn = loginBtn.cloneNode(true);
-      loginBtn.parentNode.replaceChild(newLoginBtn, loginBtn);
-      
+      const loginBtn = byId("loginBtn"); const newLoginBtn = loginBtn.cloneNode(true); loginBtn.parentNode.replaceChild(newLoginBtn, loginBtn);
       const headerOrdersBtn = byId("headerOrdersBtn");
-
       if (user) {
         if(accountLabel) accountLabel.textContent = `+91 ${user.phoneNumber.slice(-4)}`;
         if(byId("customerPhone")) byId("customerPhone").value = user.phoneNumber.replace('+91','');
-        
-        // Login hone par Fancy Button dikhao
         if(headerOrdersBtn) headerOrdersBtn.hidden = false;
-        
-        newLoginBtn.addEventListener("click", () => { 
-          if(confirm("Do you want to log out?")) signOut(auth).then(() => {
-            toast("Logged out");
-            if(headerOrdersBtn) headerOrdersBtn.hidden = true;
-          }); 
-        });
+        newLoginBtn.addEventListener("click", () => { if(confirm("Do you want to log out?")) signOut(auth).then(() => { toast("Logged out"); if(headerOrdersBtn) headerOrdersBtn.hidden = true; }); });
       } else {
         if(accountLabel) accountLabel.textContent = "Sign in";
         if(headerOrdersBtn) headerOrdersBtn.hidden = true;
@@ -251,16 +228,16 @@ const GroceryHut = (() => {
     byId("checkoutForm")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       if(cart.size === 0) return toast("Your cart is empty!");
-      const btn = e.target.querySelector("button[type='submit']");
-      btn.disabled = true; btn.textContent = "Placing Order...";
+      
+      // Extra safety check before sending to Firebase
+      if(!auth.currentUser) return toast("You must be logged in to order!");
+
+      const btn = e.target.querySelector("button[type='submit']"); btn.disabled = true; btn.textContent = "Placing Order...";
       const orderItems = []; let totalAmount = 0;
-      cart.forEach((q, id) => {
-        const p = products.find(i => i.id === id);
-        if(p) { orderItems.push({ id: p.id, name: p.name, price: p.price, qty: q }); totalAmount += p.price * q; }
-      });
+      cart.forEach((q, id) => { const p = products.find(i => i.id === id); if(p) { orderItems.push({ id: p.id, name: p.name, price: p.price, qty: q }); totalAmount += p.price * q; } });
       const orderData = {
         customerName: byId("customerName").value.trim(), customerPhone: byId("customerPhone").value.trim(), village: byId("checkoutVillage").value, address: byId("customerAddress").value.trim(), note: byId("orderNote").value.trim(), items: orderItems, total: totalAmount, status: "Pending", paymentMethod: "Cash on Delivery", date: new Date().toLocaleString(),
-        userId: auth.currentUser ? auth.currentUser.uid : "Guest"
+        userId: auth.currentUser.uid // Ab guest entry band!
       };
       try {
         await addDoc(collection(db, "orders"), orderData);
@@ -270,22 +247,49 @@ const GroceryHut = (() => {
   }
 
   function init() {
-    setupFirebaseAuth();
-    setupOrderSystem();
-    loadProducts();
+    setupFirebaseAuth(); setupOrderSystem(); loadProducts();
 
     document.addEventListener("click", e => {
-      const add = e.target.closest("[data-add]"), inc = e.target.closest("[data-increase]"), dec = e.target.closest("[data-decrease]"), rem = e.target.closest("[data-remove]"), close = e.target.closest("[data-close]"), filter = e.target.closest("[data-filter]");
-      if(add) { cart.set(add.dataset.add, 1); toast("Added to cart"); updateCartUI(); }
+      const add = e.target.closest("[data-add]"), inc = e.target.closest("[data-increase]"), dec = e.target.closest("[data-decrease]"), rem = e.target.closest("[data-remove]"), close = e.target.closest("[data-close]"), filter = e.target.closest("[data-filter]"), openProd = e.target.closest("[data-open-product]");
+      
+      if(add) { cart.set(add.dataset.add, (cart.get(add.dataset.add) || 0) + 1); toast("Added to cart"); updateCartUI(); }
       if(inc) { const id = inc.dataset.increase; cart.set(id, cart.get(id) + 1); updateCartUI(); }
       if(dec) { const id = dec.dataset.decrease; if(cart.get(id) > 1) cart.set(id, cart.get(id) - 1); else cart.delete(id); updateCartUI(); }
       if(rem) { cart.delete(rem.dataset.remove); updateCartUI(); }
       if(close) closePanels();
       if(filter) { document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active")); filter.classList.add("active"); category = filter.dataset.filter; renderProducts(); }
+      if(openProd) { openProductModal(openProd.dataset.openProduct); }
+
+      // YAHAN SECURITY ADD KI GAYI HAI 🔒
       if(e.target.id === "proceedToCheckoutBtn") {
+        if (!auth.currentUser) {
+          closePanels();
+          toast("Please sign in to place an order!");
+          openPanel("authDialog");
+          return; // Yahan code ruk jayega, checkout page nahi khulega
+        }
+        
         closePanels(); openPanel("checkoutDialog"); let subtotal = 0;
         cart.forEach((q, id) => { const p = products.find(i => i.id === id); if(p) subtotal += p.price * q; });
         byId("checkoutSummary").innerHTML = `You are paying: <strong style="color:var(--forest)">${money(subtotal)}</strong>`;
+      }
+      
+      if(e.target.id === "wishlistBtn" && currentModalProductId) {
+         if(wishlist.includes(currentModalProductId)) {
+             wishlist = wishlist.filter(id => id !== currentModalProductId); toast("Removed from wishlist");
+         } else {
+             wishlist.push(currentModalProductId); toast("Added to wishlist ❤️");
+         }
+         localStorage.setItem('grocery_wishlist', JSON.stringify(wishlist)); updateWishlistHeart();
+      }
+
+      if(e.target.id === "shareProductBtn" && currentModalProductId) {
+         const p = products.find(i => i.id === currentModalProductId);
+         if(p) {
+             const shareText = `Check out ${p.name} for ${money(p.price)} on Grocery Hut! Order now: ${window.location.href}`;
+             if (navigator.share) { navigator.share({ title: p.name, text: shareText, url: window.location.href }).catch(console.error); } 
+             else { navigator.clipboard.writeText(shareText); toast("Link copied to share!"); }
+         }
       }
     });
 
@@ -294,23 +298,10 @@ const GroceryHut = (() => {
     byId("saveLocationBtn")?.addEventListener("click", () => { const val = byId("villageSelect").value; if(val) { selectedVillage = val; byId("selectedLocation").textContent = val; closePanels(); toast(`Location set to ${val}`); } });
     byId("searchInput")?.addEventListener("input", e => { search = e.target.value.toLowerCase(); renderProducts(); });
     byId("sortSelect")?.addEventListener("change", e => { sort = e.target.value; renderProducts(); });
-    
-    // Header Fancy Button Click Listener
-    byId("headerOrdersBtn")?.addEventListener("click", () => {
-      closePanels();
-      openPanel("ordersDialog");
-      loadMyOrders();
-    });
-    
-    // Footer Button Click Listener
-    byId("footerOrdersBtn")?.addEventListener("click", () => {
-      closePanels();
-      openPanel("ordersDialog");
-      loadMyOrders();
-    });
+    byId("headerOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
+    byId("footerOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
   }
 
   return { init };
 })();
-
 document.addEventListener("DOMContentLoaded", GroceryHut.init);
