@@ -2,471 +2,216 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#173f30">
-
-  <title>Grocery-Hut | Good Food, Closer to Home</title>
-  <meta name="description" content="Shop everyday groceries, fresh produce and household essentials with Grocery-Hut.">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="style.css?v=2">
-  <!-- JavaScript -->
-  <script type="module" src="script.js" defer></script>
-  <style>
-  html, body {
-      overflow-x: hidden !important;
-      width: 100% !important;
-      max-width: 100vw !important;
-  }
-  @media screen and (max-width: 480px) {
-      .header-content {
-          padding: 8px 5px !important;
-          gap: 5px !important;
-      }
-      .header-actions {
-          gap: 5px !important;
-      }
-      .header-actions button {
-          padding: 6px 8px !important;
-          font-size: 11px !important;
-      }
-      .logo-text, .logo h1 {
-          font-size: 18px !important;
-      }
-  }
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Grocery Hut - App</title>
+  <link rel="stylesheet" href="style.css?v=final">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
-
 <body>
 
-  <!-- Announcement -->
-  <div class="announcement">
-    <p>GOOD FOOD, CLOSER TO HOME <span>✳</span> SERVING OUR LOCAL COMMUNITY</p>
-  </div>
-
-  <!-- Header -->
-  <header class="header">
-    <a href="#home" class="brand" aria-label="Grocery-Hut home">
-      <span class="brand-icon">g.</span>
-      <span class="brand-name">grocery<span>-hut</span></span>
-    </a>
-
-    <button class="location-button" id="locationBtn" type="button">
-      <span class="location-icon">⌖</span>
-      <span class="location-copy">
-        <small>DELIVERING TO</small>
-        <strong id="selectedLocation">Select your village</strong>
-      </span>
-      <span aria-hidden="true">⌄</span>
-    </button>
-
-    <div class="header-search">
-      <span aria-hidden="true">⌕</span>
-      <input
-        id="searchInput"
-        type="search"
-        placeholder="Search rice, vegetables, oil..."
-        aria-label="Search groceries"
-      >
-      <button id="searchBtn" type="button">Search</button>
+  <!-- TOP HEADER (Cleaned up for App) -->
+  <header class="app-header">
+    <div class="logo">
+      <h1 style="display:flex; align-items:center; gap:8px;">
+        <span style="background:var(--forest); color:white; padding:4px 10px; border-radius:8px;">g.</span> 
+        <span style="color:var(--forest);">grocery</span><span style="color:#888; font-weight:400;">-hut</span>
+      </h1>
     </div>
-
     <div class="header-actions">
-      <button class="account-button" id="loginBtn" type="button">
-        <span aria-hidden="true">♙</span>
-        <span id="accountLabel">Sign in</span>
-      </button>
-
-      <!-- Naya Fancy Orders Button (Shuru me hidden rahega) -->
-      <button class="fancy-orders-button" id="headerOrdersBtn" type="button" hidden>
-        <span class="order-icon">📦</span>
-        <span>My Orders</span>
-      </button>
-
-      <button class="cart-button" id="cartBtn" type="button">
-        <span aria-hidden="true">▱</span>
-        <span>Basket</span>
-        <span class="cart-count" id="cartCount">0</span>
+      <button id="loginBtn" class="profile-btn">
+        <span>👤</span> <span id="accountLabel">Sign in</span>
       </button>
     </div>
   </header>
 
-  <!-- Navigation -->
-  <nav class="category-nav" aria-label="Main navigation">
-    <a href="#categories">Shop categories</a>
-    <a href="#featured">Best sellers</a>
-    <a href="#fresh">Fresh picks</a>
-    <a href="#essentials">Daily essentials</a>
-    <a href="#about">Our promise</a>
-  </nav>
-
-  <main>
-
-    <!-- Hero -->
-    <section class="hero" id="home">
-      <div class="hero-copy">
-        <div class="eyebrow">
-          <span class="status-dot"></span>
-          YOUR NEIGHBOURHOOD GROCERY STORE
-        </div>
-
-        <h1>Freshness for<br>your <em>everyday.</em></h1>
-
-        <p>
-          From kitchen staples to fresh produce,
-          discover the little things that make home feel like home.
-        </p>
-
-        <div class="hero-actions">
-          <a href="#featured" class="primary-button">Explore groceries <span>↗</span></a>
-          <span class="hero-note">Local shops. Everyday essentials.</span>
-        </div>
-
-        <div class="hero-trust">
-          <span>✳ Carefully sourced</span>
-          <span>✳ Neighbourhood first</span>
-        </div>
+  <!-- LOCATION & SEARCH -->
+  <div class="top-bar">
+    <div class="location-picker" id="locationBtn">
+      <span class="loc-icon">⌖</span>
+      <div class="loc-text">
+        <small>DELIVERING TO</small>
+        <strong id="selectedLocation">Select your village ⌄</strong>
       </div>
+    </div>
+    <div class="search-container">
+      <span>🔍</span>
+      <input type="text" id="searchInput" class="search-bar" placeholder="Search rice, vegetables, oil...">
+    </div>
+  </div>
 
-      <div class="hero-art" role="img" aria-label="Fresh vegetables, fruit and grocery essentials">
-        <div class="hero-stamp">
-          <span>GOOD FOOD</span>
-          <strong>GROWN<br>WITH CARE</strong>
-          <span>✳ EVERYDAY FRESH</span>
-        </div>
-        <div class="hero-art-caption">
-          <span>01 / THE EVERYDAY COLLECTION</span>
-          <span>Simple. Fresh. Local.</span>
-        </div>
-      </div>
-    </section>
+  <!-- SCROLLABLE CATEGORIES (Tumhara original) -->
+  <div class="category-filters">
+    <button class="filter-chip active" data-filter="All">Shop categories</button>
+    <button class="filter-chip" data-filter="Best Sellers">Best sellers</button>
+    <button class="filter-chip" data-filter="Fresh">Fresh picks</button>
+    <button class="filter-chip" data-filter="Daily">Daily Needs</button>
+  </div>
 
-    <!-- Service strip -->
-    <section class="service-strip" aria-label="Shopping benefits">
-      <div class="service-item">
-        <span class="service-icon">✳</span>
-        <div>
-          <strong>Made for your neighbourhood</strong>
-          <p>Local shopping, made easier</p>
-        </div>
-      </div>
+  <!-- HERO BANNER (Tumhara original design) -->
+  <main class="app-main">
+    <div class="hero-banner">
+      <div class="hero-tag">● YOUR NEIGHBOURHOOD GROCERY STORE</div>
+      <h1 class="hero-title">Freshness for<br>your everyday.</h1>
+      <p class="hero-subtitle">From kitchen staples to fresh produce, discover the little things that make home feel like home.</p>
+      <button class="hero-btn">Explore groceries ↗</button>
+      <p class="hero-footer">Local shops. Everyday essentials.</p>
+    </div>
 
-      <div class="service-item">
-        <span class="service-icon">↗</span>
-        <div>
-          <strong>Everyday essentials</strong>
-          <p>Your daily needs in one place</p>
-        </div>
-      </div>
-
-      <div class="service-item">
-        <span class="service-icon">♡</span>
-        <div>
-          <strong>Thoughtfully selected</strong>
-          <p>Quality that feels like home</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Categories -->
-    <section class="section" id="categories">
-      <div class="section-heading">
-        <div>
-          <span class="section-kicker">A LITTLE BIT OF EVERYTHING</span>
-          <h2>Shop by category<span>.</span></h2>
-          <p>All the everyday things, right where you need them.</p>
-        </div>
-      </div>
-
-      <div class="category-grid" id="categoryGrid">
-        <!-- Categories generated by JS -->
-      </div>
-    </section>
-
-    <!-- Featured products -->
-    <section class="section product-section" id="featured">
-      <div class="section-heading">
-        <div>
-          <span class="section-kicker">THE NEIGHBOURHOOD FAVOURITES</span>
-          <h2>Everyday favourites<span>.</span></h2>
-          <p>Popular picks for your kitchen and home.</p>
-        </div>
-
-        <div class="product-controls">
-          <select id="sortSelect">
-            <option value="default">Recommended</option>
-            <option value="price-low">Price: low to high</option>
-            <option value="price-high">Price: high to low</option>
-            <option value="name">Name: A to Z</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="filter-bar" id="filterBar">
-        <button class="filter-chip active" data-filter="All" type="button">All products</button>
-        <button class="filter-chip" data-filter="Staples" type="button">Staples</button>
-        <button class="filter-chip" data-filter="Snacks" type="button">Snacks</button>
-        <button class="filter-chip" data-filter="Dairy" type="button">Dairy</button>
-      </div>
-
-      <div class="product-grid" id="productGrid">
-        <!-- Products generated by JS -->
-      </div>
-
-      <div class="empty-state" id="emptyState" hidden>
-        <span>⌕</span>
-        <h3>No products found</h3>
-        <p>Try another search or choose a different category.</p>
-      </div>
-    </section>
-
-    <!-- Fresh picks feature -->
-    <section class="fresh-feature" id="fresh">
-      <div class="fresh-feature-copy">
-        <span class="section-kicker">A FRESH TAKE ON EVERYDAY</span>
-        <h2>Good things<br>start in the <em>kitchen.</em></h2>
-        <p>
-          From fresh vegetables to the staples you reach for
-          every day, make room for good food.
-        </p>
-        <a href="#categories" class="light-button">Find your favourites ↗</a>
-      </div>
-      <div class="fresh-feature-art" role="img" aria-label="A colourful selection of fresh produce">
-        <span class="fresh-art-label">THE FRESH COLLECTION / GH</span>
-      </div>
-    </section>
-
-    <!-- Essentials -->
-    <section class="section" id="essentials">
-      <div class="section-heading">
-        <div>
-          <span class="section-kicker">THE EVERYDAY EDIT</span>
-          <h2>Your home, taken care of<span>.</span></h2>
-          <p>The little essentials that keep your household going.</p>
-        </div>
-      </div>
-      <div class="product-grid" id="essentialsGrid">
-        <!-- Essentials generated by JS -->
-      </div>
-    </section>
-
-    <!-- Local service information -->
-    <section class="local-promise" id="about">
-      <div class="promise-mark">g.</div>
-      <div class="promise-copy">
-        <span class="section-kicker">ROOTED IN THE NEIGHBOURHOOD</span>
-        <h2>Your local shops.<br>Your everyday needs.</h2>
-        <p>
-          Grocery-Hut aims to bring local grocery shopping
-          closer to homes across our service area.
-        </p>
-      </div>
-    </section>
-
+    <!-- PRODUCTS GRID -->
+    <div class="section-heading">
+      <h2>Everyday essentials</h2>
+    </div>
+    <div id="productGrid" class="product-grid">
+      <!-- JS will load products here -->
+    </div>
+    <div id="emptyState" class="empty-state" hidden>No products found.</div>
   </main>
 
-  <!-- Footer (Fixed 3-Column Design) -->
-  <footer class="footer">
-    <div class="footer-top">
-      <a href="#home" class="brand footer-brand">
-        <span class="brand-icon">g.</span>
-        <span class="brand-name">grocery<span>-hut</span></span>
-      </a>
-      <p>Good food, closer to home.</p>
-    </div>
-
-    <div class="footer-links">
-      <div>
-        <strong>SHOP</strong>
-        <a href="#categories">All categories</a>
-        <a href="#featured">Popular products</a>
-        <a href="#essentials">Household essentials</a>
-      </div>
-
-      <div>
-        <strong>YOUR ACCOUNT</strong>
-        <button type="button" id="footerOrdersBtn">My orders</button>
-      </div>
-
-      <div>
-        <strong>GROCERY-HUT</strong>
-        <a href="#about">Our promise</a>
-      </div>
-    </div>
-
-    <div class="footer-bottom">
-      <span>© 2024 Grocery-Hut. Made for everyday living.</span>
-    </div>
-  </footer>
-
-  <!-- General dialog backdrop -->
-  <div class="dialog-backdrop" id="dialogBackdrop" hidden></div>
-
-  <!-- Location selector Dialog -->
-  <section class="dialog location-dialog" id="locationDialog" hidden>
-    <button class="dialog-close" data-close type="button">×</button>
-    <span class="dialog-icon">⌖</span>
-    <h2>Where should we deliver?</h2>
-    
-    <label for="villageSelect">Your village</label>
-    <select id="villageSelect">
-      <option value="">Choose your village</option>
-      <option value="Rajnagar">Rajnagar</option>
-      <option value="Dharampur">Dharampur</option>
-      <option value="Manikchak">Manikchak</option>
-      <option value="Milki">Milki</option>
-      <option value="Sovanagar">Sovanagar</option>
-    </select>
-    
-    <button class="primary-button full-button" id="saveLocationBtn" type="button">
-      Save location
+  <!-- BOTTOM NAVIGATION (App UI) -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="navHomeBtn">
+      <span class="nav-icon">🏠</span>
+      <span>Home</span>
     </button>
-  </section>
-
-  <!-- Login / OTP Dialog -->
-  <section class="dialog auth-dialog" id="authDialog" hidden>
-    <button class="dialog-close" data-close type="button">×</button>
     
-    <div class="auth-brand">
-      <span class="brand-icon">g.</span>
-    </div>
+    <!-- Hide these until logged in -->
+    <button class="nav-item auth-required" id="navWishlistBtn" style="display: none;">
+      <span class="nav-icon">❤️</span>
+      <span>Wishlist</span>
+    </button>
+    <button class="nav-item auth-required" id="navOrdersBtn" style="display: none;">
+      <span class="nav-icon">📦</span>
+      <span>Orders</span>
+    </button>
 
-    <span class="section-kicker">WELCOME TO GROCERY-HUT</span>
-    <h2>Your everyday, made easier.</h2>
-    <p>Sign in with your mobile number to manage your orders.</p>
-
-    <!-- Invisible Recaptcha for Firebase Auth -->
-    <div id="recaptcha-container" style="margin-bottom:10px;"></div>
-
-    <form id="phoneForm">
-      <label for="phoneInput">Mobile number</label>
-      <div class="phone-field">
-        <span>+91</span>
-        <input id="phoneInput" type="tel" maxlength="10" placeholder="10-digit number" required>
+    <button class="nav-item" id="cartBtn">
+      <div class="cart-icon-wrapper">
+        <span class="nav-icon">🛒</span>
+        <span id="cartCount" class="cart-badge">0</span>
       </div>
-      <button class="primary-button full-button" type="submit" id="sendOtpBtn">
-        Continue with mobile
-      </button>
-    </form>
+      <span>Basket</span>
+    </button>
+  </nav>
 
-    <form id="otpForm" hidden>
-      <label for="otpInput">Verification code</label>
-      <input id="otpInput" type="text" maxlength="6" placeholder="Enter 6-digit OTP" required>
-      <button class="primary-button full-button" type="submit">
-        Verify and continue
-      </button>
-      <button class="text-button" type="button" id="backToPhoneBtn">
-        Change mobile number
-      </button>
-    </form>
+  <!-- ================= MODALS & DIALOGS ================= -->
+  <div id="dialogBackdrop" class="dialog-backdrop" hidden></div>
 
-    <p class="form-message" id="authMessage" aria-live="polite"></p>
-  </section>
-
-  <!-- Shopping Cart Drawer -->
-  <aside class="cart-drawer" id="cartDrawer" hidden>
-    <div class="cart-header">
-      <div>
-        <span class="section-kicker">YOUR EVERYDAY ESSENTIALS</span>
-        <h2>Your basket</h2>
-      </div>
-      <button class="dialog-close" data-close type="button">×</button>
+  <!-- PRODUCT DETAILS MODAL (Slide-up) -->
+  <div id="productDialog" class="dialog slide-up" hidden>
+    <div class="dialog-header">
+      <h2>Product Details</h2>
+      <button data-close class="close-btn">✕</button>
     </div>
-
-    <div id="cartContents">
-      <!-- Cart items and total injected by JS -->
-    </div>
-  </aside>
-
-  <!-- PRODUCT DETAILS MODAL (Naya Feature) -->
-    <div id="productDialog" class="dialog" hidden style="max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
-      <div class="dialog-header">
-        <h2>Product Details</h2>
-        <button data-close class="icon-button">✕</button>
+    <div class="dialog-content no-padding">
+      <div class="modal-img-container">
+        <img id="modalProductImage" src="" alt="Product">
+        <button id="wishlistBtn" class="wishlist-float">🤍</button>
       </div>
-      <div class="dialog-content" style="padding: 0; overflow-y: auto;">
-        <div style="width: 100%; height: 280px; background: #fff; text-align: center; position: relative;">
-          <img id="modalProductImage" src="" style="width: 100%; height: 100%; object-fit: contain;">
-          <button id="wishlistBtn" style="position: absolute; top: 15px; right: 15px; background: white; border: none; font-size: 22px; cursor: pointer; border-radius: 50%; width: 40px; height: 40px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">🤍</button>
+      <div class="modal-body">
+        <p id="modalProductCategory" class="modal-cat"></p>
+        <h1 id="modalProductTitle" class="modal-title"></h1>
+        <p id="modalProductUnit" class="modal-unit"></p>
+        <div class="modal-price-row">
+          <h2 id="modalProductPrice"></h2>
+          <button id="shareProductBtn" class="share-btn">↗ Share</button>
         </div>
-        <div style="padding: 20px;">
-          <p id="modalProductCategory" style="color: var(--muted); font-size: 13px; font-weight: bold; text-transform: uppercase;"></p>
-          <h1 id="modalProductTitle" style="margin: 5px 0 10px; font-size: 22px; color: var(--forest);"></h1>
-          <p id="modalProductUnit" style="font-size: 14px; background: #f0f4e9; display: inline-block; padding: 4px 10px; border-radius: 6px; color: var(--forest); font-weight: bold; margin-bottom: 15px;"></p>
-          
-          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #ccc; padding-top: 15px; margin-top: 5px;">
-            <h2 id="modalProductPrice" style="margin: 0; font-size: 24px;"></h2>
-            <button id="shareProductBtn" style="background: none; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">↗ Share</button>
-          </div>
-          
-          <div style="margin-top: 25px;">
-            <h3 style="font-size: 15px; margin-bottom: 5px;">Description</h3>
-            <p style="font-size: 13px; color: #666; line-height: 1.6;">Fresh and premium quality <span id="modalDescName"></span> sourced directly for you. Add to cart to enjoy fast home delivery. Product images are for illustrative purposes.</p>
-          </div>
-        </div>
-      </div>
-      <div class="dialog-footer" style="display: flex; gap: 10px; background: white; border-top: 1px solid #eee; padding: 15px;">
-        <div id="modalCartControls" style="flex: 1; display:flex; justify-content:center;">
-          <!-- Cart button yahan JS se aayega -->
+        <div class="modal-desc">
+          <h3>Description</h3>
+          <p>Fresh and premium quality <span id="modalDescName"></span> sourced directly for you. Add to cart for fast delivery.</p>
         </div>
       </div>
     </div>
-  
-  <!-- Checkout Dialog -->
-  <section class="dialog checkout-dialog" id="checkoutDialog" hidden>
-    <button class="dialog-close" data-close type="button">×</button>
-    <span class="section-kicker">ALMOST AT YOUR DOOR</span>
-    <h2>Delivery details</h2>
-    <p>Review your address and order before continuing.</p>
+    <div class="dialog-footer" id="modalCartControls"></div>
+  </div>
 
-    <form id="checkoutForm">
-      <label for="customerName">Full name</label>
-      <input id="customerName" type="text" required placeholder="Your name">
+  <!-- LOGIN / OTP MODAL -->
+  <div id="authDialog" class="dialog slide-up" hidden>
+    <div class="dialog-header">
+      <h2>Welcome</h2>
+      <button data-close class="close-btn">✕</button>
+    </div>
+    <div class="dialog-content">
+      <form id="phoneForm" class="auth-form">
+        <p>Sign in with your mobile number to manage orders.</p>
+        <div class="input-row">
+          <span class="prefix">+91</span>
+          <input type="tel" id="phoneInput" placeholder="Mobile number" required pattern="[0-9]{10}">
+        </div>
+        <button type="submit" class="btn-primary">Continue with mobile</button>
+        <div id="recaptcha-container"></div>
+      </form>
+      <form id="otpForm" class="auth-form" hidden>
+        <p>Enter the 6-digit OTP sent to your phone.</p>
+        <input type="text" id="otpInput" class="full-input" placeholder="Enter OTP" required>
+        <button type="submit" class="btn-primary">Verify & Login</button>
+        <button type="button" id="backToPhoneBtn" class="btn-text">Change Number</button>
+      </form>
+      <div id="authMessage" class="auth-message"></div>
+    </div>
+  </div>
 
-      <label for="customerPhone">Mobile number</label>
-      <input id="customerPhone" type="tel" maxlength="10" required placeholder="10-digit mobile number">
+  <!-- CART DRAWER -->
+  <div id="cartDrawer" class="dialog slide-up" hidden>
+    <div class="dialog-header">
+      <h2>Your Basket</h2>
+      <button data-close class="close-btn">✕</button>
+    </div>
+    <div class="dialog-content" id="cartContents"></div>
+  </div>
 
-      <label for="checkoutVillage">Village</label>
-      <select id="checkoutVillage" required>
-        <option value="">Select your village</option>
-        <option value="Rajnagar">Rajnagar</option>
-        <option value="Dharampur">Dharampur</option>
-        <option value="Manikchak">Manikchak</option>
-        <option value="Milki">Milki</option>
-        <option value="Sovanagar">Sovanagar</option>
+  <!-- CHECKOUT MODAL -->
+  <div id="checkoutDialog" class="dialog slide-up" hidden>
+    <div class="dialog-header">
+      <h2>Checkout</h2>
+      <button data-close class="close-btn">✕</button>
+    </div>
+    <div class="dialog-content">
+      <form id="checkoutForm">
+        <div class="input-group"><label>Full Name</label><input type="text" id="customerName" required></div>
+        <div class="input-group"><label>Mobile</label><input type="tel" id="customerPhone" readonly class="locked-input"></div>
+        <div class="input-group"><label>Village / Area</label>
+          <select id="checkoutVillage" required>
+            <option value="">Select Village</option>
+            <option value="Malda">Malda</option>
+            <option value="Kolkata">Kolkata</option>
+          </select>
+        </div>
+        <div class="input-group"><label>Full Address</label><textarea id="customerAddress" required rows="3"></textarea></div>
+        <div class="input-group"><label>Note (Optional)</label><input type="text" id="orderNote" placeholder="Any delivery instructions?"></div>
+        <div id="checkoutSummary" class="checkout-summary"></div>
+        <button type="submit" class="btn-primary">Place Order (COD)</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MY ORDERS MODAL -->
+  <div id="ordersDialog" class="dialog slide-up" hidden>
+    <div class="dialog-header">
+      <h2>My Orders</h2>
+      <button data-close class="close-btn">✕</button>
+    </div>
+    <div class="dialog-content" id="ordersList"></div>
+  </div>
+
+  <!-- LOCATION MODAL -->
+  <div id="locationDialog" class="dialog center-modal" hidden>
+    <div class="dialog-header">
+      <h2>Select Delivery Area</h2>
+      <button data-close class="close-btn">✕</button>
+    </div>
+    <div class="dialog-content">
+      <select id="villageSelect" class="full-input">
+        <option value="">Choose...</option>
+        <option value="Malda">Malda</option>
+        <option value="Kolkata">Kolkata</option>
       </select>
-
-      <label for="customerAddress">Full delivery address</label>
-      <textarea id="customerAddress" rows="3" required placeholder="House, road, landmark"></textarea>
-
-      <label for="orderNote">Order note (optional)</label>
-      <textarea id="orderNote" rows="2" placeholder="Any special instructions?"></textarea>
-
-      <div class="checkout-summary" id="checkoutSummary" style="margin-top:15px; padding:10px; background:#e4efdf; border-radius:10px; font-size:12px;">
-        <!-- JS will add total amount here -->
-      </div>
-
-      <button class="primary-button full-button" type="submit" style="margin-top:15px;">
-        Confirm Order (Cash on Delivery)
-      </button>
-    </form>
-  </section>
-
-  <!-- Order History (My Orders) Dialog -->
-  <section class="dialog orders-dialog" id="ordersDialog" hidden>
-    <button class="dialog-close" data-close type="button">×</button>
-    <span class="section-kicker">YOUR SHOPPING JOURNEY</span>
-    <h2>Your orders</h2>
-    <div id="ordersList" style="margin-top: 15px; max-height: 400px; overflow-y: auto;">
-      <!-- JavaScript yahan orders add karega -->
+      <button id="saveLocationBtn" class="btn-primary" style="margin-top:15px;">Save Location</button>
     </div>
-  </section>
+  </div>
 
-  <!-- Accessible status messages (Toast) -->
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <!-- TOAST -->
+  <div id="toast" class="toast" hidden></div>
 
+  <script type="module" src="script.js"></script>
 </body>
 </html>
