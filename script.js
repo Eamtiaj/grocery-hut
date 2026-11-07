@@ -118,11 +118,7 @@ const GroceryHut = (() => {
   function updateCartUI() {
     let count = 0, subtotal = 0;
     cart.forEach((q, id) => { count += q; const product = products.find(p => p.id === id); if(product) subtotal += product.price * q; });
-    
-    // Yahan mobile cart count bhi update kar diya gaya hai
     if(byId("cartCount")) byId("cartCount").textContent = count;
-    document.querySelectorAll(".mobile-cart-count").forEach(el => el.textContent = count);
-    
     renderProducts(); renderEssentials();
     
     if(currentModalProductId && !byId("productDialog").hidden) updateModalCartBtn();
@@ -215,36 +211,14 @@ const GroceryHut = (() => {
     onAuthStateChanged(auth, (user) => {
       const loginBtn = byId("loginBtn"); const newLoginBtn = loginBtn.cloneNode(true); loginBtn.parentNode.replaceChild(newLoginBtn, loginBtn);
       const headerOrdersBtn = byId("headerOrdersBtn");
-      
-      // Bottom Nav buttons variables
-      const mobileOrdersBtn = byId("mobileOrdersBtn");
-      const mobileLoginBtn = byId("mobileLoginBtn");
-      
       if (user) {
         if(accountLabel) accountLabel.textContent = `+91 ${user.phoneNumber.slice(-4)}`;
         if(byId("customerPhone")) byId("customerPhone").value = user.phoneNumber.replace('+91','');
-        
-        // Show Orders, Hide Login (Mobile & Desktop)
         if(headerOrdersBtn) headerOrdersBtn.hidden = false;
-        if(mobileOrdersBtn) mobileOrdersBtn.style.display = "flex";
-        if(mobileLoginBtn) mobileLoginBtn.style.display = "none";
-        
-        newLoginBtn.addEventListener("click", () => { 
-          if(confirm("Do you want to log out?")) signOut(auth).then(() => { 
-            toast("Logged out"); 
-            if(headerOrdersBtn) headerOrdersBtn.hidden = true; 
-            if(mobileOrdersBtn) mobileOrdersBtn.style.display = "none";
-            if(mobileLoginBtn) mobileLoginBtn.style.display = "flex";
-          }); 
-        });
+        newLoginBtn.addEventListener("click", () => { if(confirm("Do you want to log out?")) signOut(auth).then(() => { toast("Logged out"); if(headerOrdersBtn) headerOrdersBtn.hidden = true; }); });
       } else {
         if(accountLabel) accountLabel.textContent = "Sign in";
-        
-        // Hide Orders, Show Login (Mobile & Desktop)
         if(headerOrdersBtn) headerOrdersBtn.hidden = true;
-        if(mobileOrdersBtn) mobileOrdersBtn.style.display = "none";
-        if(mobileLoginBtn) mobileLoginBtn.style.display = "flex";
-        
         newLoginBtn.addEventListener("click", () => openPanel("authDialog"));
       }
     });
@@ -255,6 +229,7 @@ const GroceryHut = (() => {
       e.preventDefault();
       if(cart.size === 0) return toast("Your cart is empty!");
       
+      // Extra safety check before sending to Firebase
       if(!auth.currentUser) return toast("You must be logged in to order!");
 
       const btn = e.target.querySelector("button[type='submit']"); btn.disabled = true; btn.textContent = "Placing Order...";
@@ -262,7 +237,7 @@ const GroceryHut = (() => {
       cart.forEach((q, id) => { const p = products.find(i => i.id === id); if(p) { orderItems.push({ id: p.id, name: p.name, price: p.price, qty: q }); totalAmount += p.price * q; } });
       const orderData = {
         customerName: byId("customerName").value.trim(), customerPhone: byId("customerPhone").value.trim(), village: byId("checkoutVillage").value, address: byId("customerAddress").value.trim(), note: byId("orderNote").value.trim(), items: orderItems, total: totalAmount, status: "Pending", paymentMethod: "Cash on Delivery", date: new Date().toLocaleString(),
-        userId: auth.currentUser.uid 
+        userId: auth.currentUser.uid // Ab guest entry band!
       };
       try {
         await addDoc(collection(db, "orders"), orderData);
@@ -285,12 +260,13 @@ const GroceryHut = (() => {
       if(filter) { document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active")); filter.classList.add("active"); category = filter.dataset.filter; renderProducts(); }
       if(openProd) { openProductModal(openProd.dataset.openProduct); }
 
+      // YAHAN SECURITY ADD KI GAYI HAI 🔒
       if(e.target.id === "proceedToCheckoutBtn") {
         if (!auth.currentUser) {
           closePanels();
           toast("Please sign in to place an order!");
           openPanel("authDialog");
-          return; 
+          return; // Yahan code ruk jayega, checkout page nahi khulega
         }
         
         closePanels(); openPanel("checkoutDialog"); let subtotal = 0;
@@ -324,11 +300,6 @@ const GroceryHut = (() => {
     byId("sortSelect")?.addEventListener("change", e => { sort = e.target.value; renderProducts(); });
     byId("headerOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
     byId("footerOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
-    
-    // Mobile Bottom Nav Listeners (Naya Feature)
-    byId("mobileCartBtn")?.addEventListener("click", () => openPanel("cartDrawer"));
-    byId("mobileOrdersBtn")?.addEventListener("click", () => { closePanels(); openPanel("ordersDialog"); loadMyOrders(); });
-    byId("mobileLoginBtn")?.addEventListener("click", () => openPanel("authDialog"));
   }
 
   return { init };
