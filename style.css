@@ -193,3 +193,30 @@ main { width: min(1380px, 91%); margin: 0 auto; }
     font-size: 14px;
   }
 }
+/* ========================================= */
+/* MOBILE SCREEN OVERFLOW FIX                */
+/* ========================================= */
+html, body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden !important; /* Ye screen ko left-right hilne se rokega */
+}
+
+/* Mobile screens ke liye buttons ko adjust karna */
+@media screen and (max-width: 480px) {
+    .header-content {
+        gap: 5px !important;
+        padding: 10px 8px !important;
+    }
+    .header-actions {
+        gap: 5px !important;
+    }
+    .header-actions button {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+    }
+    .search-container, .search-bar {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+}
