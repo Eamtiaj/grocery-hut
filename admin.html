@@ -195,5 +195,29 @@
     // Load orders jab admin page khule
     loadAdminOrders();
   </script>
+
+
+<!-- ISKE JUST NICHE YE NAYA SCRIPT SHURU KARO 👇 -->
+<script type="module">
+  import { auth, onAuthStateChanged } from "./firebase.js";
+
+  const MY_ADMIN_PHONE = "+919641952486"; // Apna number daalo
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      alert("Bhai, pehle main app mein login toh karo!");
+      window.location.href = "index.html"; 
+    } else {
+      console.log("Tera login number ye hai: ", user.phoneNumber); 
+      
+      if (user.phoneNumber !== MY_ADMIN_PHONE) {
+        alert(`Access Denied! Tera number ${user.phoneNumber} hai, par Admin koi aur hai.`);
+        window.location.href = "index.html"; 
+      } else {
+        console.log("Welcome Eamtiaj Bhai! Admin Access Granted.");
+      }
+    }
+  });
+</script>
 </body>
 </html>
